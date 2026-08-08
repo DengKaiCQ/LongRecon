@@ -1,4 +1,4 @@
-# LongRecon Benchmark
+# LongRecon Benchmark: A Large-Scale Benchmark for Continuous Long-Sequence 3D Reconstruction
 
 Utilities for inspecting Unreal Engine EXR depth maps and fusing multi-camera RGB, depth and camera poses into a point cloud.
 
