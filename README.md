@@ -74,7 +74,11 @@ Export C2W camera poses as red wireframe frustums:
 ```bash
 python utils/export_camera_frustums.py
 ```
-You may view the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
+## Example scenario
+
+You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon)). It is a short sequence of 2500 frames in a small scene. The example scenario is about 39.7 GB in total for all 6 views, and 7.5 GB for the Front view alone.
+
+View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
 
 ![ExampleRender](./assets/example-ply-1.jpg)
 ![ExampleRender](./assets/example-ply-3.jpg)
