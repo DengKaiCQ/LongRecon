@@ -70,7 +70,7 @@ Export C2W camera poses as red wireframe frustums:
 ```bash
 python utils/export_camera_frustums.py
 ```
-You may view the `.ply` file using Meshlab as below (pointcloud form front 3 views)
+You may view the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
 
 ![ExampleRender](./assets/example-ply-1.jpg)
 ![ExampleRender](./assets/example-ply-3.jpg)
