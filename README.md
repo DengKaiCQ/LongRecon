@@ -79,4 +79,6 @@ You may view the `.ply` file using [Meshlab](https://www.meshlab.net/) as below 
 
 And the actual rendered example scene would be like
 
+![ExampleRender](./assets/render-1.jpg)
+![ExampleRender](./assets/render-2.jpg)
 ![ExampleRender](./assets/topdown-view-example.jpg)
