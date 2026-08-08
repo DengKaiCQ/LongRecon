@@ -1,6 +1,6 @@
-# LongRecon Benchmark: A Large-Scale Benchmark for Continuous Long-Sequence 3D Reconstruction
+# LongRecon Benchmark
 
-Python utilities for inspecting Unreal Engine EXR depth maps and fusing RGB, Pose and Depth frames into a point cloud `.ply` file.
+Utilities for inspecting Unreal Engine EXR depth maps and fusing multi-camera RGB, depth and camera poses into a point cloud.
 
 ## Installation
 
@@ -13,34 +13,70 @@ python -m pip install -r requirements.txt
 ## Data layout
 
 ```text
-DATA_DIR/
-├── rgb/                # image_0000.png, ...
-├── depth/              # depth_0000.exr, ...
-└── pose/
-    ├── K/              # 000000.txt, ...
-    └── T_wc/           # 000000.txt, ...
+<Senario Name>/
+|-- RGB/
+|   |-- Front/          # image_000000.png, ...
+|   |-- FrontRight/
+|   |-- RearRight/
+|   |-- Rear/
+|   |-- RearLeft/
+|   `-- FrontLeft/
+|-- Depth/
+|   |-- Front/          # depth_000000.exr, ...
+|   |-- FrontRight/
+|   |-- RearRight/
+|   |-- Rear/
+|   |-- RearLeft/
+|   `-- FrontLeft/
+`-- Pose/
+|   |-- Front/
+|   |    |-- K/          # 000000.txt, ...
+|   |    |-- T_cw/       # 000000.txt, ...
+|   |    `-- T_wc/       # 000000.txt, ...
+|   |-- FrontRight/
+|   |-- RearRight/
+|   |-- Rear/
+|   |-- RearLeft/
+|   `-- FrontLeft/
+.
 ```
 
-Set `DATA_DIR` and other parameters at the top of `fuse_pcd.py` before running.
+Set `DATA_DIR` in `utils/fuse_pcd.py`. Select the views to fuse with:
+
+```python
+SELECTED_CAMERAS = ["Front", "FrontLeft", "FrontRight"]
+```
+
+Use all six names to fuse the complete surround view. `SAMPLE_RATIO` is applied to every frame of every selected camera.
 
 ## Usage
 
 Inspect one EXR file:
 
 ```bash
-python readexr.py "path/to/depth_0000.exr"
+python utils/readexr.py "path/to/depth_000000.exr"
 ```
 
-Fuse all matching frames:
+Fuse the selected cameras:
 
 ```bash
-python -u fuse_pcd.py
+python -u utils/fuse_pcd.py
 ```
 
-The point cloud is saved to the path specified by `OUTPUT_PLY`.
+The streaming pipeline writes temporary PLY chunks and merges them into the path configured by `OUTPUT_PLY`.
 
-Export C2W camera poses as red frustums:
+Export C2W camera poses as red wireframe frustums:
 
 ```bash
-python export_camera_frustums.py
+python utils/export_camera_frustums.py
 ```
+You may view the `.ply` file using Meshlab as below (pointcloud form front 3 views)
+
+![ExampleRender](assets\example-ply-1.jpg)
+![ExampleRender](assets\example-ply-3.jpg)
+![ExampleRender](assets\example-ply-2.jpg)
+![ExampleRender](assets\example-ply-pose.jpg)
+
+And the actual rendered example scene would be like
+
+![ExampleRender](assets\topdown-view-example.jpg)
