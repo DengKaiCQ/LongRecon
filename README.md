@@ -72,11 +72,11 @@ python utils/export_camera_frustums.py
 ```
 You may view the `.ply` file using Meshlab as below (pointcloud form front 3 views)
 
-![ExampleRender](assets\example-ply-1.jpg)
-![ExampleRender](assets\example-ply-3.jpg)
-![ExampleRender](assets\example-ply-2.jpg)
-![ExampleRender](assets\example-ply-pose.jpg)
+![ExampleRender](./assets/example-ply-1.jpg)
+![ExampleRender](./assets/example-ply-3.jpg)
+![ExampleRender](./assets/example-ply-2.jpg)
+![ExampleRender](./assets/example-ply-pose.jpg)
 
 And the actual rendered example scene would be like
 
-![ExampleRender](assets\topdown-view-example.jpg)
+![ExampleRender](./assets/topdown-view-example.jpg)
