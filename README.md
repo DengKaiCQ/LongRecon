@@ -76,7 +76,7 @@ python utils/export_camera_frustums.py
 ```
 ## Example scenario
 
-You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon)) to quickly get started and familiarize yourself with the benchmark’s data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 39.7 GB in total for all 6 views, and 7.5 GB for the Front view alone.
+You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark’s data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 39.7 GB in total for all 6 views, and 7.5 GB for the Front view alone.
 
 View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
 
