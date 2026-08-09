@@ -21,41 +21,17 @@ python -m pip install -r requirements.txt
 ## Data layout
 
 ```text
-<Senario Name>/
+Ruins-MultiCam/
 |-- RGB/
-|   |-- Front/          # image_000000.png, ...
-|   |-- FrontRight/
-|   |-- RearRight/
-|   |-- Rear/
-|   |-- RearLeft/
-|   `-- FrontLeft/
+|   `-- Front/          # image_000000.png, ...
 |-- Depth/
-|   |-- Front/          # depth_000000.exr, ...
-|   |-- FrontRight/
-|   |-- RearRight/
-|   |-- Rear/
-|   |-- RearLeft/
-|   `-- FrontLeft/
+|   `-- Front/          # depth_000000.exr, ...
 `-- Pose/
-|   |-- Front/
-|   |    |-- K/          # 000000.txt, ...
-|   |    |-- T_cw/       # 000000.txt, ...
-|   |    `-- T_wc/       # 000000.txt, ...
-|   |-- FrontRight/
-|   |-- RearRight/
-|   |-- Rear/
-|   |-- RearLeft/
-|   `-- FrontLeft/
-.
+    `-- Front/
+        |-- K/          # 000000.txt, ...
+        |-- T_wc/       # 000000.txt, ...
+        `-- T_cw/       # 000000.txt, ...
 ```
-
-Set `DATA_DIR` in `utils/fuse_pcd.py`. Select the views to fuse with:
-
-```python
-SELECTED_CAMERAS = ["Front", "FrontLeft", "FrontRight"]
-```
-
-Use all six names to fuse the complete surround view. `SAMPLE_RATIO` is applied to every frame of every selected camera.
 
 ## Usage
 
@@ -80,7 +56,7 @@ python utils/export_camera_frustums.py
 ```
 ## Example scenario
 
-You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 39.7 GB in total for all 6 views, and 7.5 GB for the Front view alone.
+You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 7.5 GB (4.04 GB for RGB and 3.50 GB for Depth).
 
 View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
 

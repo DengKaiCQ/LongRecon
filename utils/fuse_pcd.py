@@ -16,25 +16,16 @@ from exr_depth import describe_channel, read_depth_channel
 
 
 DATA_DIR = Path(r"D:\UE_Render\Ruins-MultiCam")
-RGB_ROOT = DATA_DIR / "RGB"
-DEPTH_ROOT = DATA_DIR / "Depth"
-POSE_ROOT = DATA_DIR / "Pose"
+VIEW_NAME = "Front"
+RGB_DIR = DATA_DIR / "RGB" / VIEW_NAME
+DEPTH_DIR = DATA_DIR / "Depth" / VIEW_NAME
+POSE_DIR = DATA_DIR / "Pose" / VIEW_NAME
+K_DIR = POSE_DIR / "K"
+TWC_DIR = POSE_DIR / "T_wc"
 OUTPUT_PLY = DATA_DIR / "global_pcd.ply"
 TEMP_PLY_DIR = DATA_DIR / "_point_cloud_chunks"
 
-# Keep only the camera views you want to fuse.
-SELECTED_CAMERAS = [
-    "Front",
-    "FrontRight",
-    "FrontLeft",
-    # "RearRight",
-    # "Rear",
-    # "RearLeft",
-]
-
-SAMPLE_RATIO = 0.005    # note that it is 1280x720 sample 0.005 -> ~4608 points per frame
-                        # and would be 26,399,403 point for 7500 frames (example scene 2500 frames each for Front, FrontRight and FrontLeft)
-                        # that will output an ~386 MB ply file
+SAMPLE_RATIO = 0.005
 DEPTH_SCALE_TO_METERS = 200.0
 DEPTH_MODE = "z"
 MIN_DEPTH_METERS = 0.0005
@@ -129,7 +120,7 @@ def reservoir_sample(values, sample_count, random_generator):
     return reservoir
 
 
-def select_pixels(depth, frame, camera_index):
+def select_pixels(depth, frame):
     valid = (
         np.isfinite(depth)
         & (depth >= MIN_DEPTH_METERS)
@@ -143,9 +134,7 @@ def select_pixels(depth, frame, camera_index):
     if sample_count == 0:
         return np.empty(0, dtype=np.int64)
 
-    random_generator = np.random.default_rng(
-        RANDOM_SEED + frame + camera_index * 1_000_000
-    )
+    random_generator = np.random.default_rng(RANDOM_SEED + frame)
     return reservoir_sample(valid_indices, sample_count, random_generator)
 
 
@@ -174,7 +163,6 @@ def project_pixels(depth, selected, intrinsic, camera_to_world):
 
 def process_frame(
     frame,
-    camera_index,
     rgb_path,
     depth_path,
     k_path,
@@ -191,7 +179,7 @@ def process_frame(
             f"Frame {frame} size mismatch: RGB={rgb.shape[:2]}, depth={depth.shape}"
         )
 
-    selected = select_pixels(depth, frame, camera_index)
+    selected = select_pixels(depth, frame)
     if selected.size == 0:
         empty = np.empty((0, 3), dtype=np.float64)
         return empty, empty.copy(), depth
@@ -283,60 +271,23 @@ if __name__ == "__main__":
     if not 0 < SAMPLE_RATIO <= 1:
         raise ValueError("SAMPLE_RATIO must be in the range (0, 1]")
 
-    if not SELECTED_CAMERAS:
-        raise ValueError("SELECTED_CAMERAS cannot be empty")
-    if len(set(SELECTED_CAMERAS)) != len(SELECTED_CAMERAS):
-        raise ValueError("SELECTED_CAMERAS contains duplicate names")
+    rgb_files = collect_files(RGB_DIR, RGB_PATTERN, RGB_FRAME_OFFSET, "RGB")
+    depth_files = collect_files(
+        DEPTH_DIR, DEPTH_PATTERN, DEPTH_FRAME_OFFSET, "depth EXR"
+    )
+    k_files = collect_files(K_DIR, TXT_PATTERN, K_FRAME_OFFSET, "K")
+    pose_files = collect_files(TWC_DIR, TXT_PATTERN, POSE_FRAME_OFFSET, "T_wc")
 
-    camera_data = []
-    for camera_index, camera_name in enumerate(SELECTED_CAMERAS):
-        rgb_dir = RGB_ROOT / camera_name
-        depth_dir = DEPTH_ROOT / camera_name
-        pose_dir = POSE_ROOT / camera_name
+    frames = sorted(
+        set(rgb_files) & set(depth_files) & set(k_files) & set(pose_files)
+    )
+    if not frames:
+        raise ValueError("RGB, depth, K, and T_wc have no matching frames")
+    if MAX_FRAMES is not None:
+        frames = frames[:MAX_FRAMES]
 
-        print(f"\nCamera: {camera_name}")
-        rgb_files = collect_files(
-            rgb_dir, RGB_PATTERN, RGB_FRAME_OFFSET, "RGB"
-        )
-        depth_files = collect_files(
-            depth_dir, DEPTH_PATTERN, DEPTH_FRAME_OFFSET, "depth EXR"
-        )
-        k_files = collect_files(
-            pose_dir / "K", TXT_PATTERN, K_FRAME_OFFSET, "K"
-        )
-        pose_files = collect_files(
-            pose_dir / "T_wc", TXT_PATTERN, POSE_FRAME_OFFSET, "T_wc"
-        )
-
-        frames = sorted(
-            set(rgb_files) & set(depth_files) & set(k_files) & set(pose_files)
-        )
-        if not frames:
-            raise ValueError(
-                f"{camera_name}: RGB, depth, K, and T_wc have no matching frames"
-            )
-        if MAX_FRAMES is not None:
-            frames = frames[:MAX_FRAMES]
-
-        print(
-            f"Matching frames: {len(frames)}, "
-            f"range [{frames[0]}, {frames[-1]}]"
-        )
-        camera_data.append(
-            {
-                "index": camera_index,
-                "name": camera_name,
-                "frames": frames,
-                "rgb": rgb_files,
-                "depth": depth_files,
-                "K": k_files,
-                "T_wc": pose_files,
-            }
-        )
-
-    total_camera_frames = sum(len(data["frames"]) for data in camera_data)
-    print(f"\nSelected cameras: {', '.join(SELECTED_CAMERAS)}")
-    print(f"Camera frames to process: {total_camera_frames}")
+    print(f"View: {VIEW_NAME}")
+    print(f"Matching frames: {len(frames)}, range [{frames[0]}, {frames[-1]}]")
 
     TEMP_PLY_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -344,62 +295,52 @@ if __name__ == "__main__":
     pending_points = []
     pending_colors = []
     total_points = 0
-    processed_camera_frames = 0
 
-    for data in camera_data:
-        for frame in data["frames"]:
-            points, colors, depth = process_frame(
-                frame,
-                data["index"],
-                data["rgb"][frame],
-                data["depth"][frame],
-                data["K"][frame],
-                data["T_wc"][frame],
-                show_channels=(processed_camera_frames == 0),
-            )
-            processed_camera_frames += 1
+    for index, frame in enumerate(frames, start=1):
+        points, colors, depth = process_frame(
+            frame,
+            rgb_files[frame],
+            depth_files[frame],
+            k_files[frame],
+            pose_files[frame],
+            show_channels=(index == 1),
+        )
 
-            if points.size:
-                pending_points.append(points)
-                pending_colors.append(colors)
-                total_points += len(points)
+        if points.size:
+            pending_points.append(points)
+            pending_colors.append(colors)
+            total_points += len(points)
 
-            if processed_camera_frames == 1:
-                valid_depth = depth[
-                    np.isfinite(depth)
-                    & (depth >= MIN_DEPTH_METERS)
-                    & (depth <= MAX_DEPTH_METERS)
-                ]
-                print(
-                    f"First frame: {depth.shape[1]} x {depth.shape[0]}, "
-                    f"sample ratio={SAMPLE_RATIO}"
-                )
-                if valid_depth.size:
-                    print(
-                        f"Depth: min={valid_depth.min():.3f} m, "
-                        f"median={np.median(valid_depth):.3f} m, "
-                        f"max={valid_depth.max():.3f} m"
-                    )
-
+        if index == 1:
+            valid_depth = depth[
+                np.isfinite(depth)
+                & (depth >= MIN_DEPTH_METERS)
+                & (depth <= MAX_DEPTH_METERS)
+            ]
             print(
-                f"\rCamera frames: {processed_camera_frames}/"
-                f"{total_camera_frames}, camera={data['name']}, frame={frame}, "
-                f"points={len(points)}, total={total_points}",
-                end="",
-                flush=True,
+                f"First frame: {depth.shape[1]} x {depth.shape[0]}, "
+                f"sample ratio={SAMPLE_RATIO}"
             )
-
-            if (
-                processed_camera_frames % FRAMES_PER_CHUNK == 0
-                and pending_points
-            ):
-                chunk_path = (
-                    TEMP_PLY_DIR / f"chunk_{len(chunk_paths):06d}.ply"
+            if valid_depth.size:
+                print(
+                    f"Depth: min={valid_depth.min():.3f} m, "
+                    f"median={np.median(valid_depth):.3f} m, "
+                    f"max={valid_depth.max():.3f} m"
                 )
-                save_chunk(chunk_path, pending_points, pending_colors)
-                chunk_paths.append(chunk_path)
-                pending_points.clear()
-                pending_colors.clear()
+
+        print(
+            f"\rFrames: {index}/{len(frames)}, frame={frame}, "
+            f"points={len(points)}, total={total_points}",
+            end="",
+            flush=True,
+        )
+
+        if index % FRAMES_PER_CHUNK == 0 and pending_points:
+            chunk_path = TEMP_PLY_DIR / f"chunk_{len(chunk_paths):06d}.ply"
+            save_chunk(chunk_path, pending_points, pending_colors)
+            chunk_paths.append(chunk_path)
+            pending_points.clear()
+            pending_colors.clear()
 
     print()
 
