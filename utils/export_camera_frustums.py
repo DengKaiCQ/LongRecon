@@ -6,18 +6,10 @@ import numpy as np
 
 
 DATA_DIR = Path(r"D:\UE_Render\Ruins-MultiCam")
-POSE_ROOT = DATA_DIR / "Pose"
+POSE_DIR = DATA_DIR / "Pose"
+TWC_DIR = POSE_DIR / "T_wc"
+K_DIR = POSE_DIR / "K"
 OUTPUT_PLY = DATA_DIR / "camera_frustums.ply"
-
-# Keep only the camera views you want to export.
-SELECTED_CAMERAS = [
-    "Front",
-    # "FrontRight",
-    # "FrontLeft",
-    # "RearRight",
-    # "Rear",
-    # "RearLeft",
-]
 
 FRAME_STEP = 10
 FRUSTUM_DEPTH_METERS = 0.5
@@ -131,10 +123,6 @@ def write_ply(path, vertices, colors, faces):
 
 
 if __name__ == "__main__":
-    if not SELECTED_CAMERAS:
-        raise ValueError("SELECTED_CAMERAS cannot be empty")
-    if len(set(SELECTED_CAMERAS)) != len(SELECTED_CAMERAS):
-        raise ValueError("SELECTED_CAMERAS contains duplicate names")
     if FRAME_STEP < 1:
         raise ValueError("FRAME_STEP must be at least 1")
     if FRUSTUM_DEPTH_METERS <= 0:
@@ -144,28 +132,12 @@ if __name__ == "__main__":
     if LINE_SIDES < 3:
         raise ValueError("LINE_SIDES must be at least 3")
 
-    camera_data = []
-    for camera_name in SELECTED_CAMERAS:
-        camera_root = POSE_ROOT / camera_name
-        pose_files = collect_matrices(camera_root / "T_wc")
-        intrinsic_files = collect_matrices(camera_root / "K")
-        frames = sorted(set(pose_files) & set(intrinsic_files))[::FRAME_STEP]
+    pose_files = collect_matrices(TWC_DIR)
+    intrinsic_files = collect_matrices(K_DIR)
+    frames = sorted(set(pose_files) & set(intrinsic_files))[::FRAME_STEP]
 
-        if not frames:
-            raise ValueError(
-                f"{camera_name}: T_wc and K have no matching frame numbers"
-            )
-
-        camera_data.append(
-            {
-                "name": camera_name,
-                "frames": frames,
-                "T_wc": pose_files,
-                "K": intrinsic_files,
-            }
-        )
-
-    total_frustums = sum(len(data["frames"]) for data in camera_data)
+    if not frames:
+        raise ValueError("T_wc and K have no matching frame numbers")
 
     frustum_edges = [
         (0, 1),
@@ -182,32 +154,28 @@ if __name__ == "__main__":
     colors = []
     faces = []
 
-    exported_frustums = 0
-    for data in camera_data:
-        for frame in data["frames"]:
-            intrinsic = load_matrix(data["K"][frame], (3, 3))
-            camera_to_world = load_matrix(data["T_wc"][frame], (4, 4))
-            frustum = transform_points(make_frustum(intrinsic), camera_to_world)
+    for index, frame in enumerate(frames, start=1):
+        intrinsic = load_matrix(intrinsic_files[frame], (3, 3))
+        camera_to_world = load_matrix(pose_files[frame], (4, 4))
+        frustum = transform_points(make_frustum(intrinsic), camera_to_world)
 
-            for start_index, end_index in frustum_edges:
-                line_vertices, line_faces = make_line(
-                    frustum[start_index], frustum[end_index]
-                )
-                vertex_offset = len(vertices)
-                vertices.extend(line_vertices)
-                colors.extend([CAMERA_COLOR] * len(line_vertices))
-                faces.extend(
-                    tuple(vertex_offset + vertex for vertex in face)
-                    for face in line_faces
-                )
-
-            exported_frustums += 1
-            print(
-                f"\rFrustums: {exported_frustums}/{total_frustums}, "
-                f"camera={data['name']}, frame={frame}",
-                end="",
-                flush=True,
+        for start_index, end_index in frustum_edges:
+            line_vertices, line_faces = make_line(
+                frustum[start_index], frustum[end_index]
             )
+            vertex_offset = len(vertices)
+            vertices.extend(line_vertices)
+            colors.extend([CAMERA_COLOR] * len(line_vertices))
+            faces.extend(
+                tuple(vertex_offset + vertex for vertex in face)
+                for face in line_faces
+            )
+
+        print(
+            f"\rFrustums: {index}/{len(frames)}, frame={frame}",
+            end="",
+            flush=True,
+        )
 
     print()
     write_ply(
@@ -218,5 +186,4 @@ if __name__ == "__main__":
     )
 
     print(f"Saved: {OUTPUT_PLY}")
-    print(f"Selected cameras: {', '.join(SELECTED_CAMERAS)}")
-    print(f"Frustums: {exported_frustums}")
+    print(f"Frustums: {len(frames)}")

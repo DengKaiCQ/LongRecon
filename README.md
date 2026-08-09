@@ -21,7 +21,7 @@ python -m pip install -r requirements.txt
 ## Data layout
 
 ```text
-Ruins-MultiCam/
+<Scenario Name>/
 |-- RGB/
 |   `-- Front/          # image_000000.png, ...
 |-- Depth/

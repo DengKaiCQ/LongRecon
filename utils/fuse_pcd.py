@@ -16,10 +16,9 @@ from exr_depth import describe_channel, read_depth_channel
 
 
 DATA_DIR = Path(r"D:\UE_Render\Ruins-MultiCam")
-VIEW_NAME = "Front"
-RGB_DIR = DATA_DIR / "RGB" / VIEW_NAME
-DEPTH_DIR = DATA_DIR / "Depth" / VIEW_NAME
-POSE_DIR = DATA_DIR / "Pose" / VIEW_NAME
+RGB_DIR = DATA_DIR / "RGB"
+DEPTH_DIR = DATA_DIR / "Depth"
+POSE_DIR = DATA_DIR / "Pose"
 K_DIR = POSE_DIR / "K"
 TWC_DIR = POSE_DIR / "T_wc"
 OUTPUT_PLY = DATA_DIR / "global_pcd.ply"
@@ -286,7 +285,6 @@ if __name__ == "__main__":
     if MAX_FRAMES is not None:
         frames = frames[:MAX_FRAMES]
 
-    print(f"View: {VIEW_NAME}")
     print(f"Matching frames: {len(frames)}, range [{frames[0]}, {frames[-1]}]")
 
     TEMP_PLY_DIR.mkdir(parents=True, exist_ok=True)
