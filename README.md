@@ -4,6 +4,10 @@
 <strong><h4 align="center"><a href="https://huggingface.co/datasets/DengKaiCQ/LongRecon" target="_blank">Huggingface (Uploading)</a></h4></strong>
 </strong>
 
+It is a dense 3D recon benchmark rendered by Unear Engine, will contains large scale scenarios for 10k images each. But it is currently under construction. 
+
+I am working on it! :)
+
 Utilities for inspecting Unreal Engine EXR depth maps and fusing multi-camera RGB, depth and camera poses into a point cloud.
 
 ## Installation
