@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from utils.exr_depth import describe_channel, read_depth_channel
+from exr_depth import describe_channel, read_depth_channel
 
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent

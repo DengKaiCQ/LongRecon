@@ -4,7 +4,7 @@
 <strong><h4 align="center"><a href="https://huggingface.co/datasets/DengKaiCQ/LongRecon" target="_blank">Huggingface (Uploading)</a></h4></strong>
 </strong>
 
-It is a dense 3D recon benchmark rendered by Unear Engine, will contains large scale scenarios for 10k images each. But it is currently under construction. 
+It is a dense 3D recon benchmark rendered by Unreal Engine, will contains large scale scenarios for 10k images each. But it is currently under construction. 
 
 I am working on it! :)
 
@@ -22,38 +22,60 @@ python -m pip install -r requirements.txt
 
 ```text
 <Scenario Name>/
-|-- RGB/
-|   `-- Front/          # image_000000.png, ...
-|-- Depth/
-|   `-- Front/          # depth_000000.exr, ...
-`-- Pose/
-    `-- Front/
-        |-- K/          # 000000.txt, ...
-        |-- T_wc/       # 000000.txt, ...
-        `-- T_cw/       # 000000.txt, ...
+|-- depth_exr/
+|   `-- depth_000000.exr, ...
+|-- depth_png/
+|   `-- depth_000000.png, ...
+|-- image_png/
+|   `-- image_000000.png, ...
+|-- image_jpg/
+|   `-- image_000000.jpg, ...
+`-- pose/
+    |-- K/          # 000000.txt, ...
+    |-- T_wc/       # 000000.txt, ...
+    `-- T_cw/       # 000000.txt, ...
 ```
+
+We have provided high-precision rendering data (with Depth in `exr` format and images in `png` format). The original precision data is the native rendering result of the UE engine. However, we also know that the current benchmark size may exceed a portion of the training dataset. To alleviate the storage pressure, we have also provided compressed format data (Depth in `png` format and images in `jpg` format). Generally speaking, the compressed format data is 1/4 the size of the original precision data.
+
+
+For depth map, the 16-bit depth PNG stores depth in centimeters with up to 0.5 cm rounding error, but it is quite acceptable for outdoor scenarios, and can reduce the storage pressure by 75%.
+
+The EXR depth format scale ( $\times 200$  ) converts normalized UE depth to meters, whereas the PNG depth format scale ( $\div 100$ ) converts stored centimeters back to meters. Depth PNGs look dark because normal scene depths occupy only a small part of the full 16-bit range, and this creates a less depth information lost.
+
+*Why don't we use inverse depth to PNGs depth? Cause inverse depth greatly improves near-field precision but rapidly loses accuracy at long distances, making linear centimeter depth more suitable for large outdoor scenes.*
 
 ## Usage
 
-Inspect one EXR file:
+Here is a quick example for converting them to pointcloud.
 
-```bash
-python utils/readexr.py "path/to/depth_000000.exr"
-```
-
-Fuse the selected cameras:
+If you are using `exr` Depth format, try using
 
 ```bash
 python -u utils/fuse_pcd.py
 ```
 
-The streaming pipeline writes temporary PLY chunks and merges them into the path configured by `OUTPUT_PLY`.
+The streaming pipeline writes temporary PLY chunks and merges them into the path configured by `OUTPUT_PLY`. And the number of pointcloud will be downsample $\times50 $~$100$ due to large amount of pointcloud.
 
-Export C2W camera poses as red wireframe frustums:
+You can also convert just a few frames of depth maps and images into dense, non-downsampled point clouds to examine scene details, by using
+
+```bash
+python -u utils\fuse_selected_frames.py
+```
+
+Export C2W camera poses as red wireframe frustums
 
 ```bash
 python utils/export_camera_frustums.py
 ```
+
+If you would like to use the compressed format (`png` Depths and `jpg` Images), try using
+
+```bash
+python -u utils\png_depth\fuse_pcd_from_png.py
+python -u utils\png_depth\fuse_selected_frames_png_depth.py
+```
+
 ## Example scenario
 
 You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 7.5 GB (4.04 GB for RGB and 3.50 GB for Depth).

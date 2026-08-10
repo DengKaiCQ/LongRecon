@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 
-DATA_DIR = Path(r"D:\UE_Render\Ruins-MultiCam")
+DATA_DIR = Path(r"D:\UE_Render\Factory")
 POSE_DIR = DATA_DIR / "Pose"
 TWC_DIR = POSE_DIR / "T_wc"
 K_DIR = POSE_DIR / "K"
