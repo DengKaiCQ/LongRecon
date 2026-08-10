@@ -36,7 +36,7 @@ python -m pip install -r requirements.txt
     `-- T_cw/       # 000000.txt, ...
 ```
 
-We have provided high-precision rendering data (with Depth in `exr` format and images in `png` format). The original precision data is the native rendering result of the UE engine. However, we also know that the current benchmark size may exceed a portion of the training dataset. To alleviate the storage pressure, we have also provided compressed format data (Depth in `png` format and images in `jpg` format). Generally speaking, the compressed format data is 1/4 the size of the original precision data.
+We have provided high-precision rendering data (with Depth in `exr` format and images in `png` format). The original precision data is the native rendering result of the UE engine. However, we also know that the current benchmark size may exceed some training datasets. To alleviate the storage pressure, we have also provided compressed format data (Depth in `png` format and images in `jpg` format). Generally speaking, the compressed format data is 1/4 the size of the original precision data.
 
 
 For depth map, the 16-bit depth PNG stores depth in centimeters with up to 0.5 cm rounding error, but it is quite acceptable for outdoor scenarios, and can reduce the storage pressure by 75%.
