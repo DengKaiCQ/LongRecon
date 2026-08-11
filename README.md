@@ -80,7 +80,7 @@ python -u utils\png_depth\fuse_selected_frames_png_depth.py
 
 You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 7.5 GB for original precision (4.04 GB for RGB in `png` and 3.50 GB for Depth in `exr`) or 2.21GB for compressed format (0.99 GB for RGB in `jpg` and 1.22 GB for Depth in `png`).
 
-View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
+View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below
 
 ![ExampleRender](./assets/example-ply-1.jpg)
 ![ExampleRender](./assets/example-ply-3.jpg)
