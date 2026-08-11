@@ -36,7 +36,7 @@ python -m pip install -r requirements.txt
     `-- T_cw/       # 000000.txt, ...
 ```
 
-We have provided high-precision rendering data (with Depth in `exr` format and images in `png` format). The original precision data is the native rendering result of the UE engine. However, we also know that the current benchmark size may exceed some training datasets. To alleviate the storage pressure, we have also provided compressed format data (Depth in `png` format and images in `jpg` format). Generally speaking, the compressed format data is 1/4 the size of the original precision data.
+We have provided original precision rendering data (with **depths** in `exr` format and **images** in `png` format). The original precision data is the native rendering result of the UE engine. However, we also know that the current benchmark size may exceed some training datasets. To alleviate the storage pressure, we have also provided compressed format data (**depths** in `png` format and **images** in `jpg` format). Generally speaking, the compressed format data is 1/4 the size of the original precision data.
 
 
 For depth map, the 16-bit depth PNG stores depth in centimeters with up to 0.5 cm rounding error, but it is quite acceptable for outdoor scenarios, and can reduce the storage pressure by 75%.
@@ -78,7 +78,7 @@ python -u utils\png_depth\fuse_selected_frames_png_depth.py
 
 ## Example scenario
 
-You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 7.5 GB (4.04 GB for RGB and 3.50 GB for Depth).
+You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 7.5 GB for original precision (4.04 GB for RGB in `png` and 3.50 GB for Depth in `exr`) or 2.21GB for compressed format (0.99 GB for RGB in `jpg` and 1.22 GB for Depth in `png`).
 
 View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below (pointcloud form front 3 views)
 
