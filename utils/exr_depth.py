@@ -1,9 +1,17 @@
 """Read a 2D depth channel from an EXR file."""
 
+import os
 from pathlib import Path
+import struct
 
 import numpy as np
-import OpenEXR
+
+try:
+    import OpenEXR
+except ImportError:
+    OpenEXR = None
+
+os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")
 
 
 def channel_score(part_name, channel_name):
@@ -51,6 +59,9 @@ def find_channels(exr_file):
 def read_depth_channel(path):
     path = Path(path)
 
+    if not hasattr(OpenEXR, "File"):
+        return read_simple_exr(path)
+
     with OpenEXR.File(str(path), separate_channels=True) as exr_file:
         if not exr_file.parts:
             raise ValueError(f"EXR has no parts: {path}")
@@ -62,6 +73,74 @@ def read_depth_channel(path):
         depth = channels[0]["pixels"].astype(np.float64, copy=True)
 
     return depth, channels
+
+
+def read_simple_exr(path):
+    # OpenCV can read standard single-part RGB(A) EXRs but may silently
+    # ignore custom channels. Confirm the layout before using that decoder.
+    with path.open("rb") as file:
+        header = file.read(8)
+        if len(header) != 8:
+            raise ValueError(f"Truncated EXR header: {path}")
+        magic, version = struct.unpack("<II", header)
+        if magic != 20000630:
+            raise ValueError(f"Invalid OpenEXR file: {path}")
+        if version & 0x1800:
+            raise ValueError(f"Multipart or deep EXR requires OpenEXR 3.3+: {path}")
+
+        def read_name():
+            chars = bytearray()
+            for _ in range(256):
+                char = file.read(1)
+                if not char:
+                    break
+                if char == b"\0":
+                    return bytes(chars)
+                chars.extend(char)
+            raise ValueError(f"Invalid EXR header: {path}")
+
+        names = []
+        while True:
+            attr = read_name()
+            if not attr:
+                break
+            attr_type = read_name()
+            size_bytes = file.read(4)
+            if len(size_bytes) != 4:
+                raise ValueError(f"Truncated EXR header: {path}")
+            size, = struct.unpack("<I", size_bytes)
+            if attr == b"channels":
+                if attr_type != b"chlist" or not 1 <= size <= 65536:
+                    raise ValueError(f"Invalid EXR channel list: {path}")
+                payload = file.read(size)
+                if len(payload) != size:
+                    raise ValueError(f"Truncated EXR channel list: {path}")
+                offset = 0
+                while offset < size and payload[offset]:
+                    end = payload.find(b"\0", offset)
+                    if end < 0 or end + 17 >= size:
+                        raise ValueError(f"Invalid EXR channel list: {path}")
+                    names.append(payload[offset:end])
+                    offset = end + 17
+                break
+            file.seek(size, 1)
+
+    if sorted(names) not in ([b"B", b"G", b"R"], [b"A", b"B", b"G", b"R"]):
+        raise ValueError(f"Named or non-RGB depth channels require OpenEXR 3.3+: {path}")
+
+    import cv2
+
+    pixels = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    if pixels is None or pixels.ndim != 3 or pixels.shape[2] not in (3, 4):
+        raise ValueError(f"OpenCV could not decode the RGB(A) depth EXR: {path}")
+    names = "BGRA"[:pixels.shape[2]]
+    channels = [
+        {"part_index": 0, "part_name": "OpenCV", "channel_name": name,
+         "pixels": pixels[:, :, i], "score": channel_score("", name)}
+        for i, name in enumerate(names)
+    ]
+    channels.sort(key=lambda item: item["score"], reverse=True)
+    return np.ascontiguousarray(channels[0]["pixels"], dtype=np.float64), channels
 
 
 def describe_channel(channel):

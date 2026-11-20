@@ -17,13 +17,13 @@ import numpy as np
 from exr_depth import describe_channel, read_depth_channel
 
 
-DATA_DIR = Path(r"D:\UE_Render\Factory")
-RGB_DIR = DATA_DIR / "RGB"
-DEPTH_DIR = DATA_DIR / "Depth"
-POSE_DIR = DATA_DIR / "Pose"
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-03-Rome")
+RGB_DIR = DATA_DIR / "image_jpg"
+DEPTH_DIR = DATA_DIR / "depth_exr"
+POSE_DIR = DATA_DIR / "pose"
 K_DIR = POSE_DIR / "K"
 TWC_DIR = POSE_DIR / "T_wc"
-OUTPUT_PLY = DATA_DIR / "global_pcd.ply"
+FRAME_STEP = 5  # Use 1 to process every matching frame.
 TEMP_PLY_DIR = DATA_DIR / "_point_cloud_chunks"
 
 STORAGE_MODE = "memory" # memory or disk
@@ -37,7 +37,7 @@ DEPTH_MODE = "z"
 MIN_DEPTH_METERS = 0.0005
 MAX_DEPTH_METERS = 1000.0
 RANDOM_SEED = 2026
-MAX_FRAMES = None
+MAX_FRAMES = None  # Optional limit after applying FRAME_STEP.
 FRAMES_PER_CHUNK = 20
 COPY_BUFFER_SIZE = 10 * 1024 * 1024
 
@@ -46,7 +46,7 @@ DEPTH_FRAME_OFFSET = 0
 K_FRAME_OFFSET = 0
 POSE_FRAME_OFFSET = 0
 
-RGB_PATTERN = re.compile(r"image_(\d+)\.png$", re.IGNORECASE)
+RGB_PATTERN = re.compile(r"image_(\d+)\.jpeg$", re.IGNORECASE)
 DEPTH_PATTERN = re.compile(r"depth_(\d+)\.exr$", re.IGNORECASE)
 TXT_PATTERN = re.compile(r"^(\d+)\.txt$", re.IGNORECASE)
 
@@ -116,16 +116,6 @@ def load_matrix(path, expected_shape, label):
     return matrix
 
 
-def reservoir_sample(values, sample_count, random_generator):
-    reservoir = values[:sample_count].copy()
-    remaining = values[sample_count:]
-    seen_counts = np.arange(sample_count + 1, len(values) + 1)
-    replacements = random_generator.integers(0, seen_counts)
-    selected = replacements < sample_count
-    reservoir[replacements[selected]] = remaining[selected]
-    return reservoir
-
-
 def select_pixels(depth, frame):
     valid = (
         np.isfinite(depth)
@@ -141,7 +131,7 @@ def select_pixels(depth, frame):
         return np.empty(0, dtype=np.int64)
 
     random_generator = np.random.default_rng(RANDOM_SEED + frame)
-    return reservoir_sample(valid_indices, sample_count, random_generator)
+    return random_generator.choice(valid_indices, size=sample_count, replace=False)
 
 
 def project_pixels(depth, selected, intrinsic, camera_to_world):
@@ -364,6 +354,16 @@ if __name__ == "__main__":
         raise ValueError("ESTIMATE_FRAMES must be at least 1")
     if WORKER_COUNT < 1:
         raise ValueError("WORKER_COUNT must be at least 1")
+    if isinstance(FRAME_STEP, bool) or not isinstance(FRAME_STEP, int) or FRAME_STEP < 1:
+        raise ValueError("FRAME_STEP must be a positive integer")
+    if MAX_FRAMES is not None and (
+        isinstance(MAX_FRAMES, bool) or not isinstance(MAX_FRAMES, int) or MAX_FRAMES < 1
+    ):
+        raise ValueError("MAX_FRAMES must be None or a positive integer")
+
+    # Nominal factor: sample one in FRAME_STEP frames, then SAMPLE_RATIO of valid pixels.
+    downsample_factor = FRAME_STEP / SAMPLE_RATIO
+    output_ply = DATA_DIR / f"global_pcd_{downsample_factor:.12g}x_downsampled.ply"
 
     rgb_files = collect_files(RGB_DIR, RGB_PATTERN, RGB_FRAME_OFFSET, "RGB")
     depth_files = collect_files(
@@ -377,10 +377,13 @@ if __name__ == "__main__":
     )
     if not frames:
         raise ValueError("RGB, depth, K, and T_wc have no matching frames")
+    matching_count = len(frames)
+    frames = frames[::FRAME_STEP]
     if MAX_FRAMES is not None:
         frames = frames[:MAX_FRAMES]
 
-    print(f"Matching frames: {len(frames)}, range [{frames[0]}, {frames[-1]}]")
+    print(f"Matching frames: {matching_count}")
+    print(f"Selected frames: {len(frames)}, step={FRAME_STEP}, range [{frames[0]}, {frames[-1]}]")
 
     print(f"PLY storage mode: {STORAGE_MODE}")
     print(f"Worker threads: {WORKER_COUNT}")
@@ -460,10 +463,10 @@ if __name__ == "__main__":
     if total_points == 0:
         raise ValueError("No valid points were generated")
 
-    OUTPUT_PLY.parent.mkdir(parents=True, exist_ok=True)
+    output_ply.parent.mkdir(parents=True, exist_ok=True)
 
     if STORAGE_MODE == "memory":
-        write_memory_ply(OUTPUT_PLY, memory_vertices, total_points)
+        write_memory_ply(output_ply, memory_vertices, total_points)
         final_point_count = total_points
     else:
         if pending_points:
@@ -471,10 +474,10 @@ if __name__ == "__main__":
             save_chunk(chunk_path, pending_points, pending_colors)
             chunk_paths.append(chunk_path)
 
-        final_point_count = merge_ply_files(chunk_paths, OUTPUT_PLY)
+        final_point_count = merge_ply_files(chunk_paths, output_ply)
 
         for path in chunk_paths:
             path.unlink()
 
-    print(f"Saved: {OUTPUT_PLY}")
+    print(f"Saved: {output_ply}")
     print(f"Final points: {final_point_count}")

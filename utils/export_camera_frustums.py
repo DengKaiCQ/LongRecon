@@ -5,18 +5,17 @@ from pathlib import Path
 import numpy as np
 
 
-DATA_DIR = Path(r"D:\UE_Render\Factory")
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-03-Rome")
 POSE_DIR = DATA_DIR / "Pose"
 TWC_DIR = POSE_DIR / "T_wc"
 K_DIR = POSE_DIR / "K"
-OUTPUT_PLY = DATA_DIR / "camera_frustums.ply"
+OUTPUT_PLY = DATA_DIR / "camera_viz_5_steps.ply"
 
-FRAME_STEP = 10
+FRAME_STEP = 5
 FRUSTUM_DEPTH_METERS = 0.5
 CAMERA_COLOR = (255, 0, 0)
 LINE_RADIUS_METERS = 0.012
 LINE_SIDES = 6
-
 
 def collect_matrices(folder):
     if not folder.is_dir():
@@ -40,6 +39,17 @@ def load_matrix(path, expected_shape):
             f"expected {expected_shape}, got {matrix.shape}"
         )
     return matrix
+
+
+def trajectory_length_meters(pose_files):
+    # T_wc stores the camera center in world coordinates in its last column.
+    centers = np.array([
+        load_matrix(pose_files[frame], (4, 4))[:3, 3]
+        for frame in sorted(pose_files)
+    ])
+    if not np.isfinite(centers).all():
+        raise ValueError("Camera centers must contain only finite values")
+    return float(np.linalg.norm(np.diff(centers, axis=0), axis=1).sum())
 
 
 def make_frustum(intrinsic):
@@ -139,6 +149,9 @@ if __name__ == "__main__":
     if not frames:
         raise ValueError("T_wc and K have no matching frame numbers")
 
+    # Use all poses for distance, regardless of the frustum display step.
+    total_distance = trajectory_length_meters(pose_files)
+
     frustum_edges = [
         (0, 1),
         (0, 2),
@@ -187,3 +200,4 @@ if __name__ == "__main__":
 
     print(f"Saved: {OUTPUT_PLY}")
     print(f"Frustums: {len(frames)}")
+    print(f"Total camera distance ({len(pose_files):,} poses): {total_distance:,.3f} m")
