@@ -1,21 +1,31 @@
-"""Export C2W camera poses as red frustums in a PLY mesh."""
+"""Export colorful C2W camera frustum wireframes to PLY and optionally GLB."""
 
+from colorsys import hsv_to_rgb
+import json
 from pathlib import Path
+import struct
 
 import numpy as np
 
 
-DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-03-Rome")
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-07-Tower")
 POSE_DIR = DATA_DIR / "Pose"
 TWC_DIR = POSE_DIR / "T_wc"
 K_DIR = POSE_DIR / "K"
-OUTPUT_PLY = DATA_DIR / "camera_viz_5_steps.ply"
 
 FRAME_STEP = 5
-FRUSTUM_DEPTH_METERS = 0.5
-CAMERA_COLOR = (255, 0, 0)
-LINE_RADIUS_METERS = 0.012
+OUTPUT_PLY = DATA_DIR / f"camera_viz_{FRAME_STEP}_steps.ply"
+is_glb = False
+
+FRUSTUM_DEPTH_METERS = 1.2
+LINE_RADIUS_METERS = 0.06
 LINE_SIDES = 6
+
+FRUSTUM_EDGES = (
+    (0, 1), (0, 2), (0, 3), (0, 4),
+    (1, 2), (2, 3), (3, 4), (4, 1),
+)
+
 
 def collect_matrices(folder):
     if not folder.is_dir():
@@ -42,22 +52,22 @@ def load_matrix(path, expected_shape):
 
 
 def trajectory_length_meters(pose_files):
+    frames = sorted(pose_files)
     # T_wc stores the camera center in world coordinates in its last column.
     centers = np.array([
         load_matrix(pose_files[frame], (4, 4))[:3, 3]
-        for frame in sorted(pose_files)
+        for frame in frames
     ])
     if not np.isfinite(centers).all():
         raise ValueError("Camera centers must contain only finite values")
     return float(np.linalg.norm(np.diff(centers, axis=0), axis=1).sum())
 
 
-def make_frustum(intrinsic):
+def make_frustum(intrinsic, depth=FRUSTUM_DEPTH_METERS):
     fx, fy = intrinsic[0, 0], intrinsic[1, 1]
     cx, cy = intrinsic[0, 2], intrinsic[1, 2]
     width = 2.0 * cx
     height = 2.0 * cy
-    depth = FRUSTUM_DEPTH_METERS
 
     image_corners = np.array(
         [[0.0, 0.0], [width, 0.0], [width, height], [0.0, height]]
@@ -74,7 +84,7 @@ def transform_points(points, camera_to_world):
     return points @ rotation.T + translation
 
 
-def make_line(start, end):
+def make_line(start, end, radius):
     direction = end - start
     length = np.linalg.norm(direction)
     if length == 0:
@@ -90,7 +100,7 @@ def make_line(start, end):
     axis_y = np.cross(direction, axis_x)
 
     angles = np.linspace(0.0, 2.0 * np.pi, LINE_SIDES, endpoint=False)
-    ring = LINE_RADIUS_METERS * (
+    ring = radius * (
         np.cos(angles)[:, None] * axis_x
         + np.sin(angles)[:, None] * axis_y
     )
@@ -103,6 +113,14 @@ def make_line(start, end):
         faces.append((side, LINE_SIDES + next_side, LINE_SIDES + side))
 
     return vertices, faces
+
+
+def add_frustum_edges(frustum, vertices, faces, radius):
+    for start, end in FRUSTUM_EDGES:
+        line_vertices, line_faces = make_line(frustum[start], frustum[end], radius)
+        offset = len(vertices)
+        vertices.extend(line_vertices)
+        faces.extend(tuple(offset + index for index in face) for face in line_faces)
 
 
 def write_ply(path, vertices, colors, faces):
@@ -132,72 +150,112 @@ def write_ply(path, vertices, colors, faces):
             file.write(f"3 {face[0]} {face[1]} {face[2]}\n")
 
 
+def build_wireframes(frames, pose_files, intrinsic_files):
+    if not all(np.isfinite(value) and value > 0 for value in (
+        FRUSTUM_DEPTH_METERS, LINE_RADIUS_METERS
+    )):
+        raise ValueError("Frustum depth and line radius must be finite and positive")
+
+    frame_span = max(1, frames[-1] - frames[0])
+    vertices, colors, faces = [], [], []
+    for frame in frames:
+        intrinsic = load_matrix(intrinsic_files[frame], (3, 3))
+        camera_to_world = load_matrix(pose_files[frame], (4, 4))
+        frustum = transform_points(make_frustum(intrinsic), camera_to_world)
+
+        progress = (frame - frames[0]) / frame_span
+        color = tuple(round(255 * channel) for channel in hsv_to_rgb(0.76 * (1.0 - progress), 0.9, 1.0))
+        start = len(vertices)
+        add_frustum_edges(frustum, vertices, faces, LINE_RADIUS_METERS)
+        colors.extend([color] * (len(vertices) - start))
+
+    return vertices, colors, faces
+
+
+def write_glb(path, vertices, colors, faces):
+    positions = np.asarray(vertices, dtype="<f4")
+    indices = np.asarray(faces, dtype="<u4").ravel()
+
+    # The PLY palette uses sRGB bytes and glTF expects linear vertex colors.
+    srgb = np.asarray(colors, dtype="<f4") / 255.0
+    linear_colors = np.where(
+        srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4
+    ).astype("<f4", copy=False)
+
+    color_offset = positions.nbytes
+    index_offset = color_offset + linear_colors.nbytes
+    binary_length = index_offset + indices.nbytes
+    document = {
+        "asset": {"version": "2.0"},
+        "extensionsUsed": ["KHR_materials_unlit"],
+        "scene": 0,
+        "scenes": [{"nodes": [0]}],
+        "nodes": [{"mesh": 0}],
+        "meshes": [{"primitives": [{
+            "attributes": {"POSITION": 0, "COLOR_0": 1},
+            "indices": 2,
+            "material": 0,
+        }]}],
+        "materials": [{
+            "name": "Colorful wireframes",
+            "pbrMetallicRoughness": {"metallicFactor": 0.0},
+            "extensions": {"KHR_materials_unlit": {}},
+            "doubleSided": True,
+        }],
+        "buffers": [{"byteLength": binary_length}],
+        "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": positions.nbytes, "target": 34962},
+            {"buffer": 0, "byteOffset": color_offset, "byteLength": linear_colors.nbytes, "target": 34962},
+            {"buffer": 0, "byteOffset": index_offset, "byteLength": indices.nbytes, "target": 34963},
+        ],
+        "accessors": [
+            {
+                "bufferView": 0,
+                "componentType": 5126,
+                "count": len(positions),
+                "type": "VEC3",
+                "min": positions.min(axis=0).tolist(),
+                "max": positions.max(axis=0).tolist(),
+            },
+            {"bufferView": 1, "componentType": 5126, "count": len(linear_colors), "type": "VEC3"},
+            {"bufferView": 2, "componentType": 5125, "count": indices.size, "type": "SCALAR"},
+        ],
+    }
+
+    metadata = json.dumps(document, separators=(",", ":")).encode("utf-8")
+    metadata += b" " * (-len(metadata) % 4)
+    with path.open("wb") as file:
+        file.write(struct.pack("<4sII", b"glTF", 2, 28 + len(metadata) + binary_length))
+        file.write(struct.pack("<I4s", len(metadata), b"JSON"))
+        file.write(metadata)
+        file.write(struct.pack("<I4s", binary_length, b"BIN\x00"))
+        positions.tofile(file)
+        linear_colors.tofile(file)
+        indices.tofile(file)
+
+
 if __name__ == "__main__":
     if FRAME_STEP < 1:
         raise ValueError("FRAME_STEP must be at least 1")
-    if FRUSTUM_DEPTH_METERS <= 0:
-        raise ValueError("FRUSTUM_DEPTH_METERS must be positive")
-    if LINE_RADIUS_METERS <= 0:
-        raise ValueError("LINE_RADIUS_METERS must be positive")
     if LINE_SIDES < 3:
         raise ValueError("LINE_SIDES must be at least 3")
 
     pose_files = collect_matrices(TWC_DIR)
     intrinsic_files = collect_matrices(K_DIR)
     frames = sorted(set(pose_files) & set(intrinsic_files))[::FRAME_STEP]
-
     if not frames:
         raise ValueError("T_wc and K have no matching frame numbers")
 
     # Use all poses for distance, regardless of the frustum display step.
     total_distance = trajectory_length_meters(pose_files)
+    vertices, colors, faces = build_wireframes(frames, pose_files, intrinsic_files)
+    write_ply(OUTPUT_PLY, vertices, colors, faces)
+    print(f"Saved: {OUTPUT_PLY} ({len(frames):,} wireframe frustums)")
 
-    frustum_edges = [
-        (0, 1),
-        (0, 2),
-        (0, 3),
-        (0, 4),
-        (1, 2),
-        (2, 3),
-        (3, 4),
-        (4, 1),
-    ]
+    if is_glb:
+        output_glb = OUTPUT_PLY.with_suffix(".glb")
+        write_glb(output_glb, vertices, colors, faces)
+        print(f"Saved: {output_glb}")
 
-    vertices = []
-    colors = []
-    faces = []
-
-    for index, frame in enumerate(frames, start=1):
-        intrinsic = load_matrix(intrinsic_files[frame], (3, 3))
-        camera_to_world = load_matrix(pose_files[frame], (4, 4))
-        frustum = transform_points(make_frustum(intrinsic), camera_to_world)
-
-        for start_index, end_index in frustum_edges:
-            line_vertices, line_faces = make_line(
-                frustum[start_index], frustum[end_index]
-            )
-            vertex_offset = len(vertices)
-            vertices.extend(line_vertices)
-            colors.extend([CAMERA_COLOR] * len(line_vertices))
-            faces.extend(
-                tuple(vertex_offset + vertex for vertex in face)
-                for face in line_faces
-            )
-
-        print(
-            f"\rFrustums: {index}/{len(frames)}, frame={frame}",
-            end="",
-            flush=True,
-        )
-
-    print()
-    write_ply(
-        OUTPUT_PLY,
-        np.asarray(vertices),
-        np.asarray(colors),
-        faces,
-    )
-
-    print(f"Saved: {OUTPUT_PLY}")
     print(f"Frustums: {len(frames)}")
     print(f"Total camera distance ({len(pose_files):,} poses): {total_distance:,.3f} m")

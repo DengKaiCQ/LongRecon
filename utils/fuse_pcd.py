@@ -17,7 +17,7 @@ import numpy as np
 from exr_depth import describe_channel, read_depth_channel
 
 
-DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-03-Rome")
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-07-Tower")
 RGB_DIR = DATA_DIR / "image_jpg"
 DEPTH_DIR = DATA_DIR / "depth_exr"
 POSE_DIR = DATA_DIR / "pose"
