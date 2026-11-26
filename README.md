@@ -153,3 +153,11 @@ And the actual rendered example scene would be like
 ## Terms of use
 
 The code in this repository is available under the [BSD 3-Clause License](LICENSE). By downloading LongRecon Benchmark, you agree to use it solely for non-commercial purposes, such as research and benchmark evaluation. Use of the dataset, in whole or in part, to train, pre-train, or fine-tune a deep learning model is prohibited. [Dataset terms on Hugging Face](https://huggingface.co/datasets/DengKaiCQ/LongRecon#terms-of-use)
+
+## Citation
+
+If you use this repository in your academic project, please cite both of the two related works below:
+
+```
+Oops, working on it :)
+```
