@@ -8,7 +8,7 @@ A large-scale benchmark for continuous, long-sequence 3D reconstruction. Each se
 
 LongRecon is a benchmark for continuous, long-sequence 3D reconstruction rendered in Unreal Engine 5.8. It uses Lumen's ray-traced lighting and reflections to produce high-fidelity RGB images close to the photo in real life, while the engine provides synchronized, dense metric depth and ground-truth 6-DoF camera poses in a shared world coordinate system. Common evaluation benchmark of Oxford Spires, KITTI Odometry, and VBR have average trajectory lengths of approximately 0.32 km, 2.02 km, and 2.31 km, respectively. These datasets often use handheld or vehicle-mounted rigs, which tend to keep motion near ground level. Forward-facing cameras also tend to look along the direction of travel. In outdoor captures, depth measurements are often sparse, and reference poses are typically estimated through bundle adjustment or derived from sensors with noise such as GNSS and IMUs. We designed LongRecon Benchmark with average 8.119 km to evaluate reconstruction over longer trajectories with more varied camera motion. In Unreal Engine, human operators pilot a collision-enabled camera with drone-like dynamics and movement using an Xbox controller. The resulting trajectories average about 8.119 km and include substantial climbs and descents, with camera orientations that can vary independently of the direction of travel. LongRecon Benchmark aims to fill this gap by enabling researchers to evaluate whether 3D geometry models like VGGTs, SfMs or SLAMs remain geometrically accurate and consistent over kilometer-scale trajectories with substantial changes in altitude and viewing direction.
 
-## 1. Benchmark specifications
+## 📊 1. Benchmark specifications
 
 | Property | Value |
 | --- | --- |
@@ -20,7 +20,7 @@ LongRecon is a benchmark for continuous, long-sequence 3D reconstruction rendere
 
 The benchmark targets the time duration of a single-battery flight for a compact DJI drone.
 
-## 2. Getting the data
+## 📥 2. Getting the data
 
 ### Download from the command line
 
@@ -65,7 +65,7 @@ The script writes the extracted files into a sibling directory alongside the inp
 
 Extract `pose.zip` at the sequence root to create `pose/`.
 
-## 3. Data layout
+## 🗂️ 3. Data layout
 Each sequence is distributed as ZIP archives together with preview videos and PLY visualizations.
 
 ```text
@@ -104,7 +104,7 @@ Extract the depth and RGB archives into `depth_exr/` and `image_jpg/`, respectiv
 
 Sequences can also include `image_video.mp4` and `depth_video.mp4` for previewing the trajectory, `camera_viz_5_steps.ply` for viewing camera poses, `global_pcd_4000x_downsampled.ply` for viewing the scene, and `length.txt` for the total camera path length.
 
-## 4. Coordinate conventions
+## 🧭 4. Coordinate conventions
 
 Each frame provides a 3×3 intrinsics matrix `K` and two 4×4 homogeneous pose matrices. For homogeneous column vectors, the transforms are defined as follows.
 
@@ -112,7 +112,7 @@ Each frame provides a 3×3 intrinsics matrix `K` and two 4×4 homogeneous pose m
 
  - **The EXR depth** used for fusion is camera-space `Z` depth. Multiply the stored depth values by `200` to obtain meters (`depth_meter = depth * 200`).
 
-## 5. Python Tools Installation
+## 🛠️ 5. Python Tools Installation
 
 Run the commands below from the repository root.
 
@@ -122,7 +122,7 @@ conda activate longrecon
 python -m pip install -r requirements.txt
 ```
 
-## 6. Python Tools Usage
+## 💻 6. Python Tools Usage
 
 ### Inspect an EXR depth map
 
@@ -158,7 +158,7 @@ The script exports colored wireframe frustums to `camera_viz_5_steps.ply` by def
 
 The [VGGT-Long trajectory evaluation script](eval/ate_single_vggt_long.py) takes estimated and ground-truth trajectories in KITTI format and reports ATE and RPE. Set `pose_est_path` and `pose_gt_path` in the script before running it. Evaluation also requires `evo==1.14.0`, `scipy`, and `matplotlib`.
 
-## 7. Example scenario
+## 🎬 7. Example scenario
 
 `/Example/Seq-00-Example/` contains **1,763 frames** at 30 FPS (about **58 seconds**) along a **396.101 m** camera path. Extract the archives using the same layout as the benchmark sequences. [Example on Hugging Face](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)
 
