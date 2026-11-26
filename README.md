@@ -155,7 +155,7 @@ The [VGGT-Long trajectory evaluation script](eval/ate_single_vggt_long.py) takes
 
 ## 7. Example scenario
 
-`LongRecon-Example/Seq-00-Example/` contains **1,763 frames** at 30 FPS (about **58 seconds**) along a **396.101 m** camera path. Extract the archives using the same layout as the benchmark sequences. [Example on Hugging Face](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)
+`/Example/Seq-00-Example/` contains **1,763 frames** at 30 FPS (about **58 seconds**) along a **396.101 m** camera path. Extract the archives using the same layout as the benchmark sequences. [Example on Hugging Face](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)
 
 
 You can open the PLY point cloud and camera frustums in [MeshLab](https://www.meshlab.net/).
