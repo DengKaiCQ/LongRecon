@@ -17,7 +17,7 @@ import numpy as np
 from exr_depth import describe_channel, read_depth_channel
 
 
-DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-07-Tower")
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-00-Example")
 RGB_DIR = DATA_DIR / "image_jpg"
 DEPTH_DIR = DATA_DIR / "depth_exr"
 POSE_DIR = DATA_DIR / "pose"
@@ -28,7 +28,7 @@ TEMP_PLY_DIR = DATA_DIR / "_point_cloud_chunks"
 
 STORAGE_MODE = "memory" # memory or disk
 ESTIMATE_FRAMES = 150
-LARGE_PLY_GIB = 1.0
+LARGE_PLY_MIB = 1024.0
 WORKER_COUNT = 16
 
 SAMPLE_RATIO = 0.00125
@@ -316,18 +316,18 @@ def confirm_estimated_size(processed_points, processed_frames, total_frames):
         processed_points / processed_frames * total_frames
     )
     estimated_bytes = estimated_points * PLY_DTYPE.itemsize + 256
-    estimated_gib = estimated_bytes / 1024**3
+    estimated_mib = estimated_bytes / 1024**2
 
     print(
         f"\nEstimated PLY size from {processed_frames} frames: "
-        f"{estimated_gib:.2f} GiB ({estimated_points:,} points)"
+        f"{estimated_mib:.2f} MiB ({estimated_points:,} points)"
     )
 
-    if estimated_gib <= LARGE_PLY_GIB:
+    if estimated_mib <= LARGE_PLY_MIB:
         return
 
     answer = input(
-        f"Estimated size exceeds {LARGE_PLY_GIB:.2f} GiB. "
+        f"Estimated size exceeds {LARGE_PLY_MIB:.2f} MiB. "
         "Continue? [y/N]: "
     ).strip().lower()
     if answer not in {"y", "yes"}:

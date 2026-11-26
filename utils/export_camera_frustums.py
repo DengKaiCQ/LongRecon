@@ -8,7 +8,7 @@ import struct
 import numpy as np
 
 
-DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-07-Tower")
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-00-Example")
 POSE_DIR = DATA_DIR / "Pose"
 TWC_DIR = POSE_DIR / "T_wc"
 K_DIR = POSE_DIR / "K"
@@ -258,4 +258,7 @@ if __name__ == "__main__":
         print(f"Saved: {output_glb}")
 
     print(f"Frustums: {len(frames)}")
-    print(f"Total camera distance ({len(pose_files):,} poses): {total_distance:,.3f} m")
+    distance_summary = f"Total camera distance ({len(pose_files):,} poses): {total_distance:,.3f} m"
+    print(distance_summary)
+    output_length = OUTPUT_PLY.with_name("length.txt")
+    output_length.write_text(distance_summary + "\n", encoding="utf-8")

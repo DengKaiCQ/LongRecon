@@ -1,16 +1,99 @@
-<p align="center">
 <h1 align="center">LongRecon Benchmark: A Large-Scale Benchmark for Continuous Long-Sequence 3D Reconstruction</h1>
-</p>
-<strong><h4 align="center"><a href="https://huggingface.co/datasets/DengKaiCQ/LongRecon" target="_blank">Huggingface (Uploading)</a></h4></strong>
-</strong>
 
-It is a dense 3D recon benchmark rendered by Unreal Engine, will contains large scale scenarios for 10k images each. But it is currently under construction. 
+<h4 align="center"><a href="https://huggingface.co/datasets/DengKaiCQ/LongRecon" target="_blank">Huggingface (Uploading)</a></h4>
 
-I am working on it! :)
+A large-scale benchmark for continuous, long-sequence 3D reconstruction. Each sequence uses Unreal Engine to render synchronized RGB and depth along a camera trajectory, with ground-truth camera intrinsics and poses.
 
-Utilities for inspecting Unreal Engine EXR depth maps and fusing multi-camera RGB, depth and camera poses into a point cloud.
+## 1. Benchmark specifications
 
-## Installation
+| Property | Value |
+| --- | --- |
+| RGB and depth resolution | 720p (1280 × 720 pixels) |
+| Frame rate | 30 FPS |
+| Typical benchmark sequence duration | About 20–30 minutes |
+| Approximate average camera path length | 7.5 km |
+
+The benchmark targets the duration of a single-battery flight for a compact DJI drone.
+
+## 2. Getting the data
+
+### Download from the command line
+
+Install the Hugging Face CLI. The dataset is public and supports anonymous downloads. [Hugging Face CLI documentation](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
+
+```bash
+python -m pip install -U huggingface_hub
+```
+
+**Download the full dataset** into `./LongRecon`.
+
+```bash
+hf download DengKaiCQ/LongRecon --repo-type dataset --local-dir ./LongRecon
+```
+
+**Download only RGB and camera poses** into `./LongRecon-RGB-Pose`. This selects the files under each sequence's `image_jpg/` directory and its `pose.zip`.
+
+```bash
+hf download DengKaiCQ/LongRecon --repo-type dataset --include "*/image_jpg/*" --include "*/pose.zip" --local-dir ./LongRecon-RGB-Pose
+```
+
+Add `--dry-run` to either command to preview the files and download size. You can also download individual archives from the [sequence browser](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Benchmark).
+
+### Download via HF-Mirror from mainland China
+
+If transfers from Hugging Face are slow, set the mirror endpoint in your terminal and run either download command above in the same terminal. The second setting keeps these requests anonymous even if you are signed in locally. [HF-Mirror instructions](https://hf-mirror.com/)
+
+**Bash or Zsh**
+
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+export HF_HUB_DISABLE_IMPLICIT_TOKEN=1
+```
+
+### Extract the archives
+
+Extract the RGB and depth shards into their respective directories. Extract `pose.zip` at the sequence root to create `pose/`.
+
+## 3. Data layout
+
+```text
+<Sequence Name>/
+├── image_jpg/
+│   └── image_000000.jpeg, ...
+├── depth_exr/
+│   └── depth_000000.exr, ...
+└── pose/
+    ├── K/
+    │   └── 000000.txt, ...
+    ├── T_wc/
+    │   └── 000000.txt, ...
+    └── T_cw/
+        └── 000000.txt, ...
+```
+
+Match RGB, depth, and camera matrices by their numeric frame ID.
+
+Sequences can also include `image_video.mp4` and `depth_video.mp4` for previewing the trajectory, `camera_viz_5_steps.ply` for viewing camera poses, `global_pcd_4000x_downsampled.ply` for viewing the scene, and `length.txt` for the total camera path length.
+
+## 4. Coordinate conventions
+
+Each frame provides a 3×3 intrinsics matrix `K` and two 4×4 homogeneous pose matrices. For homogeneous column vectors, the transforms are defined as follows.
+
+- **Camera pose** follows OpenCV conventions. `+X` points right, `+Y` points down, and `+Z` points forward along the optical axis.
+
+```text
+p_world  = T_wc @ p_camera
+p_camera = T_cw @ p_world
+T_cw     = inverse(T_wc)
+```
+
+The translation column of `T_wc` gives the camera center in world coordinates, in meters.
+
+ - **The EXR depth used for fusion is camera-space `Z` depth. Multiply the stored depth values by `200` to obtain meters (`depth_meter = depth * 200`).**
+
+## 5. Installation
+
+Run the commands below from the repository root.
 
 ```bash
 conda create -n longrecon python=3.11 -y
@@ -18,77 +101,59 @@ conda activate longrecon
 python -m pip install -r requirements.txt
 ```
 
-## Data layout
+## 6. Python Tools Usage
 
-```text
-<Scenario Name>/
-|-- depth_exr/
-|   `-- depth_000000.exr, ...
-|-- depth_png/
-|   `-- depth_000000.png, ...
-|-- image_png/
-|   `-- image_000000.png, ...
-|-- image_jpg/
-|   `-- image_000000.jpg, ...
-`-- pose/
-    |-- K/          # 000000.txt, ...
-    |-- T_wc/       # 000000.txt, ...
-    `-- T_cw/       # 000000.txt, ...
+### Inspect an EXR depth map
+
+Pass the path to an extracted EXR to print the selected depth channel, image dimensions, and raw sample statistics.
+
+```bash
+python utils/readexr.py "path/to/sequence/depth_exr/depth_000000.exr"
 ```
 
-We have provided original precision rendering data (with **depths** in `exr` format and **images** in `png` format). The original precision data is the native rendering result of the UE engine. However, we also know that the current benchmark size may exceed some training datasets. To alleviate the storage pressure, we have also provided compressed format data (**depths** in `png` format and **images** in `jpg` format). Generally speaking, the compressed format data is 1/4 the size of the original precision data.
+### Fuse RGB-D frames into a point cloud
 
-
-For depth map, the 16-bit depth PNG stores depth in centimeters with up to 0.5 cm rounding error, but it is quite acceptable for outdoor scenarios, and can reduce the storage pressure by 75%.
-
-The EXR depth format scale ( $\times 200$  ) converts normalized UE depth to meters, whereas the PNG depth format scale ( $\div 100$ ) converts stored centimeters back to meters. Depth PNGs look dark because normal scene depths occupy only a small part of the full 16-bit range, and this creates a less depth information lost.
-
-*Why don't we use inverse depth to PNGs depth? Cause inverse depth greatly improves near-field precision but rapidly loses accuracy at long distances, making linear centimeter depth more suitable for large outdoor scenes.*
-
-## Usage
-
-Here is a quick example for converting them to pointcloud.
-
-If you are using `exr` Depth format, try using
+Set `DATA_DIR` in [utils/fuse_pcd.py](utils/fuse_pcd.py) to the extracted sequence directory and run the command below.
 
 ```bash
 python -u utils/fuse_pcd.py
 ```
 
-The streaming pipeline writes temporary PLY chunks and merges them into the path configured by `OUTPUT_PLY`. And the number of pointcloud will be downsample $\times50 $~$100$ due to large amount of pointcloud.
+The script uses frame IDs shared by RGB, EXR, `K`, and `T_wc`. By default it uses every fifth matching frame and samples `0.00125` of the valid pixels per selected frame, producing `global_pcd_4000x_downsampled.ply` in the sequence directory. Set `STORAGE_MODE = "disk"` to write and merge temporary PLY chunks for sequences that need more memory than is available.
 
-You can also convert just a few frames of depth maps and images into dense, non-downsampled point clouds to examine scene details, by using
+For a dense preview of the first few matching frames, set `FRAME_STEP = 1`, `SAMPLE_RATIO = 1.0`, and a small `MAX_FRAMES`. To fuse specific frame IDs with [utils/fuse_selected_frames.py](utils/fuse_selected_frames.py), set `FRAME_IDS` and adapt its directory and filename templates to the extracted layout.
 
-```bash
-python -u utils\fuse_selected_frames.py
-```
+### Export camera frustums and path length
 
-Export C2W camera poses as red wireframe frustums
+Set `DATA_DIR` in [utils/export_camera_frustums.py](utils/export_camera_frustums.py) to the extracted sequence directory. On case-sensitive file systems, set `POSE_DIR = DATA_DIR / "pose"` to match the archive.
 
 ```bash
 python utils/export_camera_frustums.py
 ```
 
-If you would like to use the compressed format (`png` Depths and `jpg` Images), try using
+The script exports colored wireframe frustums to `camera_viz_5_steps.ply` by default. Set `is_glb = True` to also export GLB. The `length.txt` file records the total path length in meters using all `T_wc` poses, even when the visualization uses a frame step.
 
-```bash
-python -u utils\png_depth\fuse_pcd_from_png.py
-python -u utils\png_depth\fuse_selected_frames_png_depth.py
-```
+### Evaluate a camera trajectory
 
-## Example scenario
+The [VGGT-Long trajectory evaluation script](eval/ate_single_vggt_long.py) takes estimated and ground-truth trajectories in KITTI format and reports ATE and RPE. Set `pose_est_path` and `pose_gt_path` in the script before running it. Evaluation also requires `evo==1.14.0`, `scipy`, and `matplotlib`.
 
-You can try by using the example scenario ([link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)) to quickly get started and familiarize yourself with the benchmark's data format. It is a short sequence of 2500 frames in a small scene. The example scenario is about 7.5 GB for original precision (4.04 GB for RGB in `png` and 3.50 GB for Depth in `exr`) or 2.21GB for compressed format (0.99 GB for RGB in `jpg` and 1.22 GB for Depth in `png`).
+## 7. Example scenario
 
-View the `.ply` file using [Meshlab](https://www.meshlab.net/) as below
+`LongRecon-Example/Seq-00-Example/` contains **1,763 frames** at 30 FPS (about **58 seconds**) along a **396.101 m** camera path. Extract the archives using the same layout as the benchmark sequences. [Example on Hugging Face](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Example-Ruins)
 
-![ExampleRender](./assets/example-ply-1.jpg)
-![ExampleRender](./assets/example-ply-3.jpg)
-![ExampleRender](./assets/example-ply-2.jpg)
-![ExampleRender](./assets/example-ply-pose.jpg)
+
+You can open the PLY point cloud and camera frustums in [MeshLab](https://www.meshlab.net/).
+
+<div align="center">
+<img src="./assets/example-pointcloud.jpg" width="60%" height="auto">
+</div>
 
 And the actual rendered example scene would be like
 
-![ExampleRender](./assets/render-1.jpg)
-![ExampleRender](./assets/render-2.jpg)
-![ExampleRender](./assets/topdown-view-example.jpg)
+<div align="center">
+<img src="./assets/example-ue.jpg" width="60%" height="auto">
+</div>
+
+## Terms of use
+
+The code in this repository is available under the [BSD 3-Clause License](LICENSE). By downloading LongRecon Benchmark, you agree to use it solely for non-commercial purposes, such as research and benchmark evaluation. Use of the dataset, in whole or in part, to train, pre-train, or fine-tune a deep learning model is prohibited. [Dataset terms on Hugging Face](https://huggingface.co/datasets/DengKaiCQ/LongRecon#terms-of-use)

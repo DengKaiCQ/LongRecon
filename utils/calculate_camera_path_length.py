@@ -4,7 +4,7 @@ from math import sqrt
 from pathlib import Path
 
 
-POSE_DIR = Path(r"D:\UE_Render\Factory\Pose\T_wc")
+POSE_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-00-Example\Pose\T_wc")
 FRAME_STEP = 1
 
 
