@@ -15,7 +15,8 @@ LongRecon is a benchmark for continuous, long-sequence 3D reconstruction rendere
 | RGB and depth resolution | 720p (1280 × 720 pixels) |
 | Frame rate | 30 FPS |
 | Typical sequence duration | 17–32 minutes |
-| Average camera path length | 8.119 km |
+| Average frames count | 42,045 frames / seq |
+| Average camera path length | 8.119 km / seq |
 
 The benchmark targets the time duration of a single-battery flight for a compact DJI drone.
 
