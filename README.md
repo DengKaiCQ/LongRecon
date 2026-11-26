@@ -1,6 +1,6 @@
 <h1 align="center">LongRecon Benchmark: A Large-Scale Benchmark for Continuous Long-Sequence 3D Reconstruction</h1>
 
-<h4 align="center"><a href="https://huggingface.co/datasets/DengKaiCQ/LongRecon" target="_blank">Huggingface (Uploading)</a></h4>
+<h4 align="center"><a href="https://huggingface.co/datasets/DengKaiCQ/LongRecon" target="_blank">Huggingface</a></h4>
 
 A large-scale benchmark for continuous, long-sequence 3D reconstruction. Each sequence uses Unreal Engine to render synchronized RGB and depth along a camera trajectory, with ground-truth camera intrinsics and poses.
 
@@ -19,13 +19,13 @@ The benchmark targets the time duration of a single-battery flight for a compact
 
 ### Download from the command line
 
-Install the Hugging Face CLI. The dataset is public and supports anonymous downloads. [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
+Install the Hugging Face CLI.
 
 ```bash
 python -m pip install -U huggingface_hub
 ```
 
-**Download the full dataset** into `./LongRecon`.
+**Download the full dataset**.
 
 ```bash
 hf download DengKaiCQ/LongRecon --repo-type dataset --local-dir ./LongRecon
@@ -37,7 +37,7 @@ hf download DengKaiCQ/LongRecon --repo-type dataset --local-dir ./LongRecon
 hf download DengKaiCQ/LongRecon --repo-type dataset --include "*/image_jpg/*" --include "*/pose.zip" --local-dir ./LongRecon-RGB-Pose
 ```
 
-You can also manually download individual archives from the [sequence browser](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Benchmark).
+You can also manually download individual archives from the [LongRecon HF Link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Benchmark).
 
 ### Download via HF-Mirror from mainland China
 
@@ -50,9 +50,7 @@ export HF_HUB_DISABLE_IMPLICIT_TOKEN=1
 
 ### Extract the archives
 
-Use the parallel extractor to unpack RGB or depth archives quickly. It processes up to **8 ZIP shards in parallel** by default and displays progress, speed, and an ETA. 
-
-Set `ZIP_DIR` at the top of the script to the sequence's `image_jpg/` or `depth_exr/` directory containing the ZIP files. Run the command below from the repository root.
+Use the parallel extractor to unpack RGB or depth archives quickly. It processes up to **8 ZIP shards in parallel** by default. 
 
 ```bash
 python -u utils/extract_image_or_depth_zips.py
@@ -60,7 +58,7 @@ python -u utils/extract_image_or_depth_zips.py
 
 The script writes the extracted files into a sibling directory alongside the input folder.
 
-Extract `pose.zip` at the sequence root to create `pose/`. For point cloud fusion, set `RGB_DIR` and `DEPTH_DIR` in `utils/fuse_pcd.py` to the respective `_unzipped` directories.
+Extract `pose.zip` at the sequence root to create `pose/`.
 
 ## 3. Data layout
 Each sequence is distributed as ZIP archives together with preview videos and PLY visualizations.
