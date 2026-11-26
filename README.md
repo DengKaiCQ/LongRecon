@@ -4,6 +4,10 @@
 
 A large-scale benchmark for continuous, long-sequence 3D reconstruction. Each sequence uses Unreal Engine to render synchronized RGB and depth along a camera trajectory, with ground-truth camera intrinsics and poses.
 
+## Abstract
+
+LongRecon is a benchmark for continuous, long-sequence 3D reconstruction rendered in Unreal Engine 5.8. It uses Nanite virtualized geometry and Lumen’s ray-traced lighting and reflections to produce high-fidelity RGB images, while the engine provides synchronized, dense metric depth and ground-truth 6-DoF camera poses in a shared world coordinate system. Common evaluation subsets of Oxford Spires, KITTI Odometry, and VBR have average trajectory lengths of approximately 0.32 km, 2.02 km, and 2.31 km, respectively. These datasets often use handheld or vehicle-mounted rigs, which tend to keep motion near ground level. Forward-facing cameras also tend to look along the direction of travel. In outdoor captures, range measurements are often sparse, and reference poses are typically estimated through bundle adjustment or derived from sensors such as GNSS and IMUs. We designed LongRecon to evaluate reconstruction over longer trajectories with more varied camera motion. In Unreal Engine, human operators pilot a collision-enabled camera rig with drone-like controls using an Xbox controller. The resulting trajectories average about 8 km and include substantial climbs and descents, with camera orientations that can vary independently of the direction of travel.
+
 ## 1. Benchmark specifications
 
 | Property | Value |
