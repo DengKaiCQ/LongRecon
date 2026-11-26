@@ -10,16 +10,16 @@ A large-scale benchmark for continuous, long-sequence 3D reconstruction. Each se
 | --- | --- |
 | RGB and depth resolution | 720p (1280 × 720 pixels) |
 | Frame rate | 30 FPS |
-| Typical benchmark sequence duration | About 20–30 minutes |
-| Approximate average camera path length | 7.5 km |
+| Typical sequence duration | About 20–30 minutes |
+| Average camera path length | ~7.5 km |
 
-The benchmark targets the duration of a single-battery flight for a compact DJI drone.
+The benchmark targets the time duration of a single-battery flight for a compact DJI drone.
 
 ## 2. Getting the data
 
 ### Download from the command line
 
-Install the Hugging Face CLI. The dataset is public and supports anonymous downloads. [Hugging Face CLI documentation](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
+Install the Hugging Face CLI. The dataset is public and supports anonymous downloads. [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
 
 ```bash
 python -m pip install -U huggingface_hub
@@ -31,19 +31,17 @@ python -m pip install -U huggingface_hub
 hf download DengKaiCQ/LongRecon --repo-type dataset --local-dir ./LongRecon
 ```
 
-**Download only RGB and camera poses** into `./LongRecon-RGB-Pose`. This selects the files under each sequence's `image_jpg/` directory and its `pose.zip`.
+**If you'd like download only RGB and camera poses**. Below selects the files under each sequence's `image_jpg/` directory and its `pose.zip`.
 
 ```bash
 hf download DengKaiCQ/LongRecon --repo-type dataset --include "*/image_jpg/*" --include "*/pose.zip" --local-dir ./LongRecon-RGB-Pose
 ```
 
-Add `--dry-run` to either command to preview the files and download size. You can also download individual archives from the [sequence browser](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Benchmark).
+You can also manually download individual archives from the [sequence browser](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Benchmark).
 
 ### Download via HF-Mirror from mainland China
 
-If transfers from Hugging Face are slow, set the mirror endpoint in your terminal and run either download command above in the same terminal. The second setting keeps these requests anonymous even if you are signed in locally. [HF-Mirror instructions](https://hf-mirror.com/)
-
-**Bash or Zsh**
+If transfers from Hugging Face are slow, set the mirror endpoint in your terminal and run either download command above in the same terminal.
 
 ```bash
 export HF_ENDPOINT=https://hf-mirror.com
@@ -71,8 +69,6 @@ Extract the RGB and depth shards into their respective directories. Extract `pos
         └── 000000.txt, ...
 ```
 
-Match RGB, depth, and camera matrices by their numeric frame ID.
-
 Sequences can also include `image_video.mp4` and `depth_video.mp4` for previewing the trajectory, `camera_viz_5_steps.ply` for viewing camera poses, `global_pcd_4000x_downsampled.ply` for viewing the scene, and `length.txt` for the total camera path length.
 
 ## 4. Coordinate conventions
@@ -91,7 +87,7 @@ The translation column of `T_wc` gives the camera center in world coordinates, i
 
  - **The EXR depth used for fusion is camera-space `Z` depth. Multiply the stored depth values by `200` to obtain meters (`depth_meter = depth * 200`).**
 
-## 5. Installation
+## 5. Python Tools Installation
 
 Run the commands below from the repository root.
 
@@ -119,7 +115,7 @@ Set `DATA_DIR` in [utils/fuse_pcd.py](utils/fuse_pcd.py) to the extracted sequen
 python -u utils/fuse_pcd.py
 ```
 
-The script uses frame IDs shared by RGB, EXR, `K`, and `T_wc`. By default it uses every fifth matching frame and samples `0.00125` of the valid pixels per selected frame, producing `global_pcd_4000x_downsampled.ply` in the sequence directory. Set `STORAGE_MODE = "disk"` to write and merge temporary PLY chunks for sequences that need more memory than is available.
+The script uses frame IDs shared by RGB, EXR, `K`, and `T_wc`. By default it uses `FRAME_STEP = 5` frames and samples `SAMPLE_RATIO = 0.00125` of the valid pixels per selected frame, producing `global_pcd_4000x_downsampled.ply` in the sequence directory. Set `STORAGE_MODE = "disk"` to write and merge temporary PLY chunks for sequences that need more memory than is available.
 
 For a dense preview of the first few matching frames, set `FRAME_STEP = 1`, `SAMPLE_RATIO = 1.0`, and a small `MAX_FRAMES`. To fuse specific frame IDs with [utils/fuse_selected_frames.py](utils/fuse_selected_frames.py), set `FRAME_IDS` and adapt its directory and filename templates to the extracted layout.
 
