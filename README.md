@@ -156,7 +156,7 @@ The code in this repository is available under the [BSD 3-Clause License](LICENS
 
 ## Citation
 
-If you use this repository in your academic project, please cite both of the two related works below:
+If you use this repository in your academic project, please cite our work below:
 
 ```
 Oops, working on it :)
