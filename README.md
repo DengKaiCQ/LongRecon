@@ -50,15 +50,45 @@ export HF_HUB_DISABLE_IMPLICIT_TOKEN=1
 
 ### Extract the archives
 
-Extract the RGB and depth shards into their respective directories. Extract `pose.zip` at the sequence root to create `pose/`.
+Use the parallel extractor to unpack RGB or depth archives quickly. It processes up to **8 ZIP shards in parallel** by default and displays progress, speed, and an ETA. 
+
+Set `ZIP_DIR` at the top of the script to the sequence's `image_jpg/` or `depth_exr/` directory containing the ZIP files. Run the command below from the repository root.
+
+```bash
+python -u utils/extract_image_or_depth_zips.py
+```
+
+The script writes the extracted files into a sibling directory alongside the input folder.
+
+Extract `pose.zip` at the sequence root to create `pose/`. For point cloud fusion, set `RGB_DIR` and `DEPTH_DIR` in `utils/fuse_pcd.py` to the respective `_unzipped` directories.
 
 ## 3. Data layout
+Each sequence is distributed as ZIP archives together with preview videos and PLY visualizations.
+
+```text
+LongRecon-Benchmark/
+└── <Sequence Name>/
+    ├── depth_exr/
+    │   ├── depth_exr_0001.zip
+    │   └── ...
+    ├── image_jpg/
+    │   ├── image_jpg_0001.zip
+    │   └── ...
+    ├── pose.zip
+    ├── image_video.mp4
+    ├── depth_video.mp4
+    ├── camera_viz_5_steps.ply
+    ├── global_pcd_4000x_downsampled.ply
+    └── length.txt
+```
+
+Extract the depth and RGB archives into `depth_exr/` and `image_jpg/`, respectively. Extract `pose.zip` into the sequence directory to create `pose/`.
 
 ```text
 <Sequence Name>/
-├── image_jpg/
+├── image_jpg_unzipped/
 │   └── image_000000.jpeg, ...
-├── depth_exr/
+├── depth_exr_unzipped/
 │   └── depth_000000.exr, ...
 └── pose/
     ├── K/
