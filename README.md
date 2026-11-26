@@ -75,17 +75,9 @@ Sequences can also include `image_video.mp4` and `depth_video.mp4` for previewin
 
 Each frame provides a 3×3 intrinsics matrix `K` and two 4×4 homogeneous pose matrices. For homogeneous column vectors, the transforms are defined as follows.
 
-- **Camera pose** follows OpenCV conventions. `+X` points right, `+Y` points down, and `+Z` points forward along the optical axis.
+- **Camera pose** follows OpenCV conventions. `+X` points right, `+Y` points down, and `+Z` points forward along the optical axis, in meters.
 
-```text
-p_world  = T_wc @ p_camera
-p_camera = T_cw @ p_world
-T_cw     = inverse(T_wc)
-```
-
-The translation column of `T_wc` gives the camera center in world coordinates, in meters.
-
- - **The EXR depth used for fusion is camera-space `Z` depth. Multiply the stored depth values by `200` to obtain meters (`depth_meter = depth * 200`).**
+ - **The EXR depth** used for fusion is camera-space `Z` depth. Multiply the stored depth values by `200` to obtain meters (`depth_meter = depth * 200`).
 
 ## 5. Python Tools Installation
 
