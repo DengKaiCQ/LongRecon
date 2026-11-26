@@ -4,11 +4,13 @@ from colorsys import hsv_to_rgb
 import json
 from pathlib import Path
 import struct
+import sys
+from time import perf_counter
 
 import numpy as np
 
 
-DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-00-Example")
+DATA_DIR = Path(r"D:\UE_Render\UE_Rendered\Seq-05-Hillside")
 POSE_DIR = DATA_DIR / "Pose"
 TWC_DIR = POSE_DIR / "T_wc"
 K_DIR = POSE_DIR / "K"
@@ -25,6 +27,38 @@ FRUSTUM_EDGES = (
     (0, 1), (0, 2), (0, 3), (0, 4),
     (1, 2), (2, 3), (3, 4), (4, 1),
 )
+
+
+def show_progress(items, total, label):
+    start = last_update = perf_counter()
+    interactive = sys.stdout.isatty()
+    interval = 0.5 if interactive else 2.0
+    bar_width = 20
+    print(
+        f"{label}: [{'-' * bar_width}]   0.0% (0/{total:,}) | ETA --:--:--",
+        end="" if interactive else "\n",
+        flush=True,
+    )
+    for completed, item in enumerate(items, start=1):
+        yield item
+        now = perf_counter()
+        if completed != total and now - last_update < interval:
+            continue
+
+        fraction = completed / total
+        filled = int(bar_width * fraction)
+        bar = "#" * filled + "-" * (bar_width - filled)
+        remaining = round((now - start) / completed * (total - completed))
+        hours, remainder = divmod(remaining, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        prefix = "\r" if interactive else ""
+        print(
+            f"{prefix}{label}: [{bar}] {fraction:6.1%} "
+            f"({completed:,}/{total:,}) | ETA {hours:02d}:{minutes:02d}:{seconds:02d}",
+            end="" if interactive and completed != total else "\n",
+            flush=True,
+        )
+        last_update = now
 
 
 def collect_matrices(folder):
@@ -56,7 +90,7 @@ def trajectory_length_meters(pose_files):
     # T_wc stores the camera center in world coordinates in its last column.
     centers = np.array([
         load_matrix(pose_files[frame], (4, 4))[:3, 3]
-        for frame in frames
+        for frame in show_progress(frames, len(frames), "Reading camera poses")
     ])
     if not np.isfinite(centers).all():
         raise ValueError("Camera centers must contain only finite values")
@@ -140,13 +174,13 @@ def write_ply(path, vertices, colors, faces):
         file.write("property list uchar int vertex_indices\n")
         file.write("end_header\n")
 
-        for point, color in zip(vertices, colors):
+        for point, color in show_progress(zip(vertices, colors), len(vertices), "Writing PLY vertices"):
             file.write(
                 f"{point[0]:.9f} {point[1]:.9f} {point[2]:.9f} "
                 f"{color[0]} {color[1]} {color[2]}\n"
             )
 
-        for face in faces:
+        for face in show_progress(faces, len(faces), "Writing PLY faces"):
             file.write(f"3 {face[0]} {face[1]} {face[2]}\n")
 
 
@@ -158,7 +192,7 @@ def build_wireframes(frames, pose_files, intrinsic_files):
 
     frame_span = max(1, frames[-1] - frames[0])
     vertices, colors, faces = [], [], []
-    for frame in frames:
+    for frame in show_progress(frames, len(frames), "Building frustums"):
         intrinsic = load_matrix(intrinsic_files[frame], (3, 3))
         camera_to_world = load_matrix(pose_files[frame], (4, 4))
         frustum = transform_points(make_frustum(intrinsic), camera_to_world)
@@ -240,11 +274,14 @@ if __name__ == "__main__":
     if LINE_SIDES < 3:
         raise ValueError("LINE_SIDES must be at least 3")
 
+    print(f"Scanning camera matrices in {POSE_DIR}...", flush=True)
     pose_files = collect_matrices(TWC_DIR)
     intrinsic_files = collect_matrices(K_DIR)
     frames = sorted(set(pose_files) & set(intrinsic_files))[::FRAME_STEP]
     if not frames:
         raise ValueError("T_wc and K have no matching frame numbers")
+
+    print(f"Found {len(pose_files):,} poses and selected {len(frames):,} frustums.", flush=True)
 
     # Use all poses for distance, regardless of the frustum display step.
     total_distance = trajectory_length_meters(pose_files)
@@ -254,6 +291,7 @@ if __name__ == "__main__":
 
     if is_glb:
         output_glb = OUTPUT_PLY.with_suffix(".glb")
+        print(f"Writing GLB to {output_glb}...", flush=True)
         write_glb(output_glb, vertices, colors, faces)
         print(f"Saved: {output_glb}")
 

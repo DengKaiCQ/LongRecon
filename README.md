@@ -10,7 +10,7 @@ A large-scale benchmark for continuous, long-sequence 3D reconstruction. Each se
 | --- | --- |
 | RGB and depth resolution | 720p (1280 × 720 pixels) |
 | Frame rate | 30 FPS |
-| Typical sequence duration | About 20–30 minutes |
+| Typical sequence duration | About 17–32 minutes |
 | Average camera path length | ~7.5 km |
 
 The benchmark targets the time duration of a single-battery flight for a compact DJI drone.
