@@ -48,15 +48,6 @@ hf download DengKaiCQ/LongRecon --repo-type dataset --include "*/image_jpg/*" --
 
 You can also manually download individual archives from the [LongRecon HF Link](https://huggingface.co/datasets/DengKaiCQ/LongRecon/tree/main/LongRecon-Benchmark).
 
-### Download via HF-Mirror from mainland China
-
-If transfers from Hugging Face are slow, set the mirror endpoint in your terminal and run either download command above in the same terminal.
-
-```bash
-export HF_ENDPOINT=https://hf-mirror.com
-export HF_HUB_DISABLE_IMPLICIT_TOKEN=1
-```
-
 ### Extract the archives
 
 Use the parallel extractor to unpack RGB or depth archives quickly. It processes up to **8 ZIP shards in parallel** by default. 
